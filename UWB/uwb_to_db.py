@@ -2,6 +2,8 @@ import json
 import time
 import psycopg2
 import websocket
+from datetime import datetime
+import pytz
 
 """
 UWB RTLS 데이터를 Sewio WebSocket을 통해 받아와서 DB에 저장하는 코드
@@ -50,7 +52,8 @@ class SewioWebSocket:
         tag_id = data["body"]["id"]
         posX = float(data["body"]["datastreams"][0]["current_value"].replace('%', ''))
         posY = float(data["body"]["datastreams"][1]["current_value"].replace('%', ''))
-        timestamp = data["body"]["datastreams"][0]["at"]
+        # timestamp = data["body"]["datastreams"][0]["at"]
+        timestamp = self.timestamp_process(data["body"]["datastreams"][0]["at"])
         
         # extended_tag_position 존재 여부 확인 및 처리
         if "extended_tag_position" in data["body"]:
@@ -58,6 +61,20 @@ class SewioWebSocket:
         else:
             anchor_info = json.dumps({})        
         self.manager.store_data_in_db(tag_id, posX, posY, timestamp, anchor_info)
+        
+    def timestamp_process(self, stamp):
+        # 문자열을 datetime 객체로 변환
+        timestamp_utc = datetime.strptime(stamp, '%Y-%m-%d %H:%M:%S.%f')
+        
+        # UTC 시간대로 설정
+        utc_timezone = pytz.timezone('UTC')
+        timestamp_utc = utc_timezone.localize(timestamp_utc)
+        
+        # 원하는 시간대(KST)로 변환
+        kst_timezone = pytz.timezone('Asia/Seoul')
+        timestamp_kst = timestamp_utc.astimezone(kst_timezone)
+        
+        return timestamp_kst    
         
     def on_error(self, ws, error):
         print("Error:", error)
