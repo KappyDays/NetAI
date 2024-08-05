@@ -1,4 +1,5 @@
 import json
+import time
 import psycopg2
 import websocket
 
@@ -63,6 +64,7 @@ class SewioWebSocket:
 
     def on_close(self, ws, close_status_code, close_msg):
         print("### closed ###")
+        self.reconnect()
 
     def on_open(self, ws):
         print("Opened connection")
@@ -70,6 +72,11 @@ class SewioWebSocket:
                             "method":"subscribe","resource":"{self.resource}"}}'
         print(subscribe_message)
         ws.send(subscribe_message)
+        
+    def reconnect(self):
+        time.sleep(5)
+        print("Reconnecting...")
+        self.run()
 
     def run(self):
         # websocket.enableTrace(True)
