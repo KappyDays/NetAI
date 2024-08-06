@@ -14,8 +14,6 @@ class DataManager:
     def __init__(self, configs):
         self.table_name = configs['table_name']
         self.configs = configs
-        self.producer = None
-        self.topic_name = None
         self.db_connect(configs)
         
     def db_connect(self, configs):
@@ -51,27 +49,31 @@ class SewioWebSocket:
         self.last_message_time = time.time()
         self.check_interval = 300 # 체크할 간격 (초)
         self.timeout_interval = 600 # 타임아웃 간격 (초)
-        
+
     def on_message(self, ws, message):
         self.last_message_time = time.time()
+        # 데이터 처리
+        tag_id, posX, posY, timestamp, anchor_info = self.process_message(message)
         try:
-            # print("Received:", message)
-            data = json.loads(message)
-            tag_id = data["body"]["id"]
-            posX = float(data["body"]["datastreams"][0]["current_value"].replace('%', ''))
-            posY = float(data["body"]["datastreams"][1]["current_value"].replace('%', ''))
-            # timestamp = data["body"]["datastreams"][0]["at"]
-            timestamp = self.timestamp_process(data["body"]["datastreams"][0]["at"])
-
-            # extended_tag_position 존재 여부 확인 및 처리
-            if "extended_tag_position" in data["body"]:
-                anchor_info = json.dumps(data["body"]["extended_tag_position"])
-            else:
-                anchor_info = json.dumps({})
+            # DB 저장
             self.manager.store_data_in_db(tag_id, posX, posY, timestamp, anchor_info)
-            
         except Exception as e:
-            print(f"Error processing message: {e}")
+            print(f"Data Transfer Error: {e}")
+    
+    def process_message(self, message):
+        data = json.loads(message)
+        tag_id = data["body"]["id"]
+        posX = float(data["body"]["datastreams"][0]["current_value"].replace('%', ''))
+        posY = float(data["body"]["datastreams"][1]["current_value"].replace('%', ''))
+        timestamp = self.timestamp_process(data["body"]["datastreams"][0]["at"])
+
+        # extended_tag_position 존재 여부 확인 및 처리
+        if "extended_tag_position" in data["body"]:
+            anchor_info = json.dumps(data["body"]["extended_tag_position"])
+        else:
+            anchor_info = json.dumps({})
+        
+        return tag_id, posX, posY, timestamp, anchor_info
     
     # UTC -> KST
     def timestamp_process(self, stamp):
@@ -86,7 +88,8 @@ class SewioWebSocket:
         kst_timezone = pytz.timezone('Asia/Seoul')
         timestamp_kst = timestamp_utc.astimezone(kst_timezone)
         
-        return timestamp_kst    
+        # 시간대 정보 없이 문자열로 반환
+        return timestamp_kst.strftime('%Y-%m-%d %H:%M:%S.%f')
         
     def on_error(self, ws, error):
         print("Error: ", error)
