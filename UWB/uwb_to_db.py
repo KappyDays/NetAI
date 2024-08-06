@@ -4,6 +4,7 @@ import psycopg2
 import websocket
 from datetime import datetime
 import pytz
+import threading
 
 """
 UWB RTLS 데이터를 Sewio WebSocket을 통해 받아와서 DB에 저장하는 코드
@@ -32,11 +33,13 @@ class DataManager:
             print(f"Failed to connect to the database: {e}")
             
     def store_data_in_db(self, tag_id, posX, posY, timestamp, anchor_info):
-        query = f"\
-        INSERT INTO {self.table_name} (tag_id, x_position, y_position, timestamp, anchor_info) VALUES (%s, %s, %s, %s, %s)\
-        "
-        self.cursor.execute(query, (tag_id, posX, posY, timestamp, anchor_info))
-        self.conn.commit()
+        try:
+            query = f"INSERT INTO {self.table_name} (tag_id, x_position, y_position, timestamp, anchor_info) VALUES (%s, %s, %s, %s, %s)"
+            self.cursor.execute(query, (tag_id, posX, posY, timestamp, anchor_info))
+            self.conn.commit()
+        except Exception as e:
+            print(f"Failed to store data in the database: {e}")
+            self.conn.rollback()        
         
         
 class SewioWebSocket:
@@ -45,23 +48,32 @@ class SewioWebSocket:
         self.api_key = api_key
         self.resource = resource
         self.socket_url = socket_url
+        self.last_message_time = time.time()
+        self.check_interval = 300 # 체크할 간격 (초)
+        self.timeout_interval = 600 # 타임아웃 간격 (초)
         
     def on_message(self, ws, message):
-        # print("Received:", message)
-        data = json.loads(message)
-        tag_id = data["body"]["id"]
-        posX = float(data["body"]["datastreams"][0]["current_value"].replace('%', ''))
-        posY = float(data["body"]["datastreams"][1]["current_value"].replace('%', ''))
-        # timestamp = data["body"]["datastreams"][0]["at"]
-        timestamp = self.timestamp_process(data["body"]["datastreams"][0]["at"])
-        
-        # extended_tag_position 존재 여부 확인 및 처리
-        if "extended_tag_position" in data["body"]:
-            anchor_info = json.dumps(data["body"]["extended_tag_position"])
-        else:
-            anchor_info = json.dumps({})        
-        self.manager.store_data_in_db(tag_id, posX, posY, timestamp, anchor_info)
-        
+        self.last_message_time = time.time()
+        try:
+            # print("Received:", message)
+            data = json.loads(message)
+            tag_id = data["body"]["id"]
+            posX = float(data["body"]["datastreams"][0]["current_value"].replace('%', ''))
+            posY = float(data["body"]["datastreams"][1]["current_value"].replace('%', ''))
+            # timestamp = data["body"]["datastreams"][0]["at"]
+            timestamp = self.timestamp_process(data["body"]["datastreams"][0]["at"])
+
+            # extended_tag_position 존재 여부 확인 및 처리
+            if "extended_tag_position" in data["body"]:
+                anchor_info = json.dumps(data["body"]["extended_tag_position"])
+            else:
+                anchor_info = json.dumps({})
+            self.manager.store_data_in_db(tag_id, posX, posY, timestamp, anchor_info)
+            
+        except Exception as e:
+            print(f"Error processing message: {e}")
+    
+    # UTC -> KST
     def timestamp_process(self, stamp):
         # 문자열을 datetime 객체로 변환
         timestamp_utc = datetime.strptime(stamp, '%Y-%m-%d %H:%M:%S.%f')
@@ -77,10 +89,13 @@ class SewioWebSocket:
         return timestamp_kst    
         
     def on_error(self, ws, error):
-        print("Error:", error)
+        print("Error: ", error)
+        print("Try to Reconnect")
+        self.reconnect()
 
     def on_close(self, ws, close_status_code, close_msg):
-        print("### closed ###")
+        print("Closed.")
+        print("Try to Reconnect")
         self.reconnect()
 
     def on_open(self, ws):
@@ -89,7 +104,23 @@ class SewioWebSocket:
                             "method":"subscribe","resource":"{self.resource}"}}'
         print(subscribe_message)
         ws.send(subscribe_message)
-        
+        self.last_message_time = time.time()
+        self.start_monitoring()
+
+    def start_monitoring(self):
+        def monitor():
+            while True:
+                current_time = time.time()
+                if current_time - self.last_message_time > self.timeout_interval:
+                    print("No messages received for a while, Try to reconnect....")
+                    self.reconnect()
+                    break
+                time.sleep(self.check_interval)
+
+        monitoring_thread = threading.Thread(target=monitor)
+        monitoring_thread.daemon = True
+        monitoring_thread.start()
+                
     def reconnect(self):
         time.sleep(5)
         print("Reconnecting...")
