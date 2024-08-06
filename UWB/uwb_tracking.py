@@ -32,13 +32,13 @@ class WebSocket2Kafka(SewioWebSocket):
         conf = {'bootstrap.servers': f'{self.kafka_server}:{self.kafka_port}'}
         producer = Producer(conf)
         try:
-            messages = [
-                {'key': 'tag_id', 'value': str(tag_id)},
-                {'key': 'posX', 'value': str(posX)},
-                {'key': 'posY', 'value': str(posY)},
-            ]
-            for message in messages:
-                producer.produce(self.kafka_topic, key=message['key'], value=message['value'])
+            messages = {
+                'tag_id':tag_id,
+                'posX': posX,
+                'posY': posY
+            }
+            message_str = json.dumps(messages)
+            producer.produce(self.kafka_topic, value=message_str.encode('utf-8'))
             # 전송 완료
             producer.flush()
             # print("Producer connected and message sent successfully.")
