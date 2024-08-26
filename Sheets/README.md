@@ -1,3 +1,7 @@
+ultra-optics-433707-s2-5e5e3a11e245.json : read-only
+
+ultra-optics-433707-s2-b93cb4a7a435.json : edit
+
 1. Google Cloud Platform (GCP) 접속
    
     https://cloud.google.com/free/?utm_source=google&utm_medium=cpc&utm_campaign=japac-KR-all-en-dr-BKWS-all-core-trial-EXA-dr-1605216&utm_content=text-ad-none-none-DEV_c-CRE_644033776725-ADGP_Hybrid+%7C+BKWS+-+EXA+%7C+Txt+-GCP-General-core+brand-main-KWID_43700074755444104-kwd-6458750523&userloc_1009856-network_g&utm_term=KW_google+cloud&gad_source=1&gclid=Cj0KCQjwz7C2BhDkARIsAA_SZKY2ZYjVwlwPRSAwkzkB6woldX2lXhsAQSWul4zuJRzZDgnsuX7VftUaAovMEALw_wcB&gclsrc=aw.ds&hl=ko
