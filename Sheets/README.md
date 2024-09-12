@@ -1,3 +1,5 @@
+pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
 ultra-optics-433707-s2-5e5e3a11e245.json : read-only
 
 ultra-optics-433707-s2-b93cb4a7a435.json : edit

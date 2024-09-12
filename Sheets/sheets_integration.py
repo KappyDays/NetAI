@@ -23,7 +23,7 @@ class GooglesheetUtils:
         result = (
             self.service.spreadsheets()
             .values()
-            .get(spreadsheetId=self.spreadsheet_id, 
+            .get(spreadsheetId=self.spreadsheet_id,
                  range=range_name
             )
             .execute()

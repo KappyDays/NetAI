@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka-metric-producer
+spec:
+  containers:
+  - name: kafka-metric-producer
+    image: headsman/kafka2
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "500m"
+      limits:
+        memory: "512Mi"
+        cpu: "1000m"
+    volumeMounts:
+    - name: secret-volume
+      mountPath: /app/my_config.json
+      subPath: my_config.json
+  volumes:
+  - name: secret-volume
+    secret:
+      secretName: my-config
+#    restartPolicy: Never
