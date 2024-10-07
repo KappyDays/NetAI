@@ -1,0 +1,5 @@
+pyspark
+minio
+psycopg2-binary
+delta-spark
+confluent_kafka
