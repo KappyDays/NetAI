@@ -62,7 +62,7 @@ try:
             # 명령어 출력 결과 확인
             # print(json_data['data']['result'][0]['value'][1])
             try:
-                producer.produce('k_test_metric', key=metric, value=json_data['data']['result'][0]['value'][1])
+                producer.produce('k_test_metric_ctest', key=metric, value=json_data['data']['result'][0]['value'][1])
                 producer.flush()
                 print("Producer connected and message sent successfully.")
             except KafkaError as e:
